@@ -144,6 +144,18 @@ _Evitar_: Participante, responsável principal
 Unidade persistida e ordenada de mudança que os clientes de uma sala de incidente podem receber ou recuperar após uma desconexão.
 _Evitar_: Mensagem, entrada da timeline
 
+**Intervenção de moderação**:
+Registro auditável de uma decisão administrativa que oculta ou restaura a exibição de uma mensagem ou entrada da timeline, sem reescrever o conteúdo nem apagar intervenções anteriores.
+_Evitar_: Edição, exclusão
+
+**Consulta de conteúdo moderado**:
+Acesso administrativo excepcional ao conteúdo original enquanto ele está ocultado, registrado antes de sua revelação e separado da consulta normal da sala.
+_Evitar_: Visualização normal, restauração
+
+**Histórico de moderação**:
+Sequência completa das intervenções e dos acessos administrativos relacionados a conteúdo moderado, visível somente para `admins`.
+_Evitar_: Timeline, estado atual de apresentação
+
 **Postmortem**:
 Documento posterior vinculado a um incidente para registrar contexto, causas, aprendizados e ações sem alterar o ciclo de vida do incidente.
 _Evitar_: Timeline, resultado da resolução
@@ -153,6 +165,10 @@ _Evitar_: Timeline, resultado da resolução
 **Notificação interna**:
 Aviso persistente destinado a um membro dentro do IncidentLab, independente de ele estar conectado naquele momento.
 _Evitar_: Atualização em tempo real, mensagem do incidente
+
+**Audiência de notificação**:
+Conjunto de membros ativos que satisfazem a política de destinatários de uma comunicação naquele momento.
+_Evitar_: Lista de participantes, responsável principal
 
 **Entrega de notificação**:
 Envio de uma notificação a um destinatário por um canal específico, com resultado e ciclo de vida próprios.

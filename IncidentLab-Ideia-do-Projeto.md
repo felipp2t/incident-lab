@@ -4,6 +4,7 @@
 
 - [System design consolidado](./docs/architecture/system-design.md)
 - [Modelo conceitual do domínio](./docs/architecture/domain-model.md)
+- [Contratos de aplicação](./docs/architecture/application-contracts.md)
 - [Casos de uso e critérios de aceite do MVP](./docs/requirements/mvp.md)
 - [Vocabulário do domínio](./CONTEXT.md)
 - [Decisões arquiteturais](./docs/adr/README.md)

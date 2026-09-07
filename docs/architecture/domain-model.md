@@ -1,10 +1,10 @@
 # Modelo conceitual do IncidentLab
 
-Status: proposta para revisão
+Status: aceito
 
 Este documento descreve os conceitos, relações e fronteiras de consistência do IncidentLab. Ele complementa o [system design](./system-design.md), usa o [vocabulário do domínio](../../CONTEXT.md) e não define tabelas, APIs, classes nem tecnologias.
 
-## Como ler o modelojj
+## Como ler o modelo
 
 - **Entidade** possui identidade e ciclo de vida próprios.
 - **Objeto de valor** descreve uma característica sem identidade própria.
@@ -69,6 +69,11 @@ As quatro áreas continuam proprietárias de seus próprios dados:
 O **usuário** representa a identidade da pessoa. O **vínculo organizacional** associa essa pessoa a uma organização e contém seu papel fixo: `admin`, `respondente` ou `visualizador`.
 
 A permissão vem do vínculo, enquanto a responsabilidade principal por um incidente é uma atribuição operacional. Portanto, ser responsável não concede permissões adicionais e remover um vínculo revoga o acesso mesmo que a pessoa ainda apareça no histórico.
+
+- Alterar o papel passa a valer imediatamente para novas autorizações.
+- A mudança produz `PapelDoMembroAlterado` para que outras áreas encerrem efeitos incompatíveis sem copiar a matriz de permissões.
+- Reduzir o papel para `visualizador` libera responsabilidades principais e cancela entregas externas pendentes que exijam um papel operacional.
+- A conexão pode continuar para leitura, e promoções não criam responsabilidades nem notificações retroativas.
 
 Identidade conceitual do vínculo: `organização + usuário`.
 
@@ -139,7 +144,9 @@ O **sinal** é um fato imutável observado em um instante. Cada sinal contém um
 - Um sinal anterior ao ponto já avaliado é marcado como atrasado, sem janela de espera para reordenamento.
 - Um instante observado até um minuto no futuro é tolerado, mas seu instante efetivo de avaliação é limitado ao instante recebido.
 - Um instante observado mais de um minuto no futuro é inválido e faz o sinal inteiro ser rejeitado.
-- A elegibilidade é fixada na aceitação durável: atraso posterior nos processadores internos não torna a evidência retroativamente inválida.
+- A elegibilidade temporal é fixada na aceitação durável: atraso posterior nos processadores internos não torna a evidência retroativamente inválida.
+- O arquivamento é um corte administrativo: sinais aceitos ainda recebem um desfecho, mas os não avaliados até o corte são encerrados sem alterar avaliações ou criar alertas.
+- Restaurar o serviço não reproduz os sinais encerrados pelo corte nem recupera contagens anteriores.
 
 Fontes sem frequência esperada não recebem um frescor padrão e não podem sustentar regras baseadas em silêncio ou duração até que esse contrato temporal seja definido.
 
@@ -202,6 +209,13 @@ indisponível > degradado > desconhecido > operacional
 
 Ele não pertence ao ciclo de vida do incidente e não deve ser usado como sinônimo de severidade.
 
+- Impactos de alertas já pertencem a Monitoramento e entram diretamente no cálculo.
+- Resposta a Incidentes comunica impactos manuais declarados, alterados ou encerrados por acontecimentos específicos.
+- Monitoramento mantém a contribuição corrente de cada incidente manual e recalcula o serviço de forma idempotente.
+- Mudanças do incidente sem efeito sobre o impacto operacional não participam desse contrato.
+- `EstadoOperacionalAlterado` somente é produzido quando o resultado agregado realmente muda.
+- Comunicação não consome esse acontecimento para calcular o estado público.
+
 ## Resposta a Incidentes
 
 ### Incidente
@@ -234,7 +248,9 @@ stateDiagram-v2
 Invariantes:
 
 - Cada incidente pertence a exatamente um serviço.
+- Um incidente manual somente pode ser aberto para um serviço ativo confirmado por Monitoramento.
 - `resolvido` é terminal e exige resultado, nota, autoria e instante.
+- A nota de resolução permanece interna a Resposta a Incidentes e não integra `IncidenteResolvido`.
 - Um incidente pode ser resolvido enquanto o alerta de origem continua ativo.
 - Uma recuperação posterior pode entrar na timeline, mas não reabre o incidente.
 - Existe no máximo um incidente automático não resolvido por `serviço + regra`.
@@ -267,9 +283,13 @@ Esses registros são relacionados ao incidente, mas não integram uma coleção 
 - **Mensagem**: conteúdo livre e imutável da conversa.
 - **Atualização da sala**: posição monotônica que ordena tudo que os clientes precisam receber.
 
-Promover uma mensagem cria uma entrada de timeline que copia seu conteúdo e autoria naquele instante. Remover visualmente uma mensagem exige ação administrativa auditada; o registro histórico não é reescrito silenciosamente.
+Cada atualização transporta somente a mudança confirmada naquela operação. Uma única atualização pode reunir efeitos inseparáveis, como novo estado e respectiva entrada de timeline, mas não repete o estado completo da sala.
 
-Uma mudança do incidente confirma, na mesma operação, o novo estado, a nova versão, sua entrada de timeline, a atualização da sala e a obrigação de divulgar o fato. Enviar uma mensagem confirma a mensagem e a atualização da sala juntas, sem disputar a versão do incidente.
+Promover uma mensagem cria no máximo uma entrada de timeline para aquela mensagem e copia seu conteúdo e autoria naquele instante. Ocultar ou restaurar visualmente uma mensagem ou entrada da timeline exige motivo e ação de um `admin`; cada mudança de exibição cria uma intervenção de moderação, sem apagar as anteriores. O conteúdo original não é reescrito, e posição, autoria e intervenções permanecem auditáveis. Enquanto ocultado, ele não integra nenhuma consulta normal, mesmo para `admins`; sua consulta exige uma ação administrativa explícita cujo acesso seja auditado antes da revelação. Somente `admins` consultam o histórico completo de intervenções, motivos e acessos; as demais pessoas veem apenas o estado atual de apresentação. As duas cópias são moderadas separadamente. Correções ou complementos usam uma nova mensagem e, quando necessário, uma nova promoção.
+
+Uma mudança do incidente confirma, na mesma operação, o novo estado, a nova versão, sua entrada de timeline, a atualização da sala e a obrigação de divulgar o fato específico aplicável. Mudanças de estado, severidade e responsabilidade principal não usam um `IncidenteAlterado` genérico entre áreas; a resolução permanece um acontecimento próprio. Enviar uma mensagem confirma a mensagem e a atualização da sala juntas, sem disputar a versão do incidente.
+
+Na retomada, o cliente recebe as atualizações posteriores à última sequência conhecida. Quando o intervalo não estiver mais disponível ou a posição informada não for compatível, recebe um retrato completo autorizado e passa a continuar da sequência corrente.
 
 #### Encerramento da conversa
 
@@ -309,6 +329,9 @@ O **incidente público** é uma publicação segura derivada de um incidente int
 - A publicação tem ciclo de vida próprio e conteúdo deliberadamente público.
 - Atualizações públicas são anexadas ao incidente público.
 - O status público do serviço é uma projeção, não acesso direto ao estado interno.
+- Essa projeção usa somente incidentes e impactos publicados, sem depender de `EstadoOperacionalAlterado`.
+- Cada mudança confirmada produz uma representação pública completa e sanitizada, identificada por versão.
+- A página pública substitui sua cópia pela versão mais recente e nunca consulta o incidente interno.
 
 Para um incidente já público, um postmortem concluído pode originar um **resumo público pós-incidente**. O sistema prepara conteúdo seguro, um `respondente` ou `admin` revisa a prévia e confirma a publicação em uma única ação.
 
@@ -322,6 +345,10 @@ Para um incidente já público, um postmortem concluído pode originar um **resu
 
 Uma **solicitação de notificação** registra que uma mudança relevante precisa ser comunicada. Cada combinação de destinatário e canal resulta em uma **entrega de notificação** independente; tentativas repetidas pertencem à mesma entrega.
 
+- A solicitação é única por acontecimento causador e finalidade de comunicação.
+- Cada destinatário recebe no máximo uma notificação interna por solicitação.
+- Cada combinação de notificação e canal possui no máximo uma entrega lógica; novas tentativas não criam outra entrega.
+
 - A política considera a severidade vigente quando a solicitação é criada.
 - `low` e `medium` geram notificações internas para `respondentes` e `admins`.
 - `high` e `critical` também geram e-mail para os membros elegíveis.
@@ -330,10 +357,13 @@ Uma **solicitação de notificação** registra que uma mudança relevante preci
 - A atribuição ou transferência notifica somente a pessoa diretamente envolvida.
 - A resolução considera os destinatários das comunicações anteriores de abertura ou escalada.
 - Mensagens e transições rotineiras entre investigação e monitoramento não geram avisos gerais.
+- Comunicação resolve a audiência consultando os vínculos atuais em Organizações, sem manter uma cópia própria no MVP.
+- A lista de destinatários não pertence ao acontecimento do incidente; ela é criada pela política de Comunicação.
 - Falha em um destinatário ou canal não desfaz o incidente nem bloqueia os demais.
 - Cada entrega percorre `pendente`, `entregue`, `falha permanente` ou `cancelada`.
 - Uma falha temporária mantém a entrega pendente para outra tentativa com a mesma identidade.
 - A elegibilidade do membro é conferida novamente antes do envio externo; sua perda cancela a entrega.
+- Se a consulta de vínculos falhar, a solicitação permanece pendente e segue a política de repetição.
 - E-mails contêm apenas serviço, severidade, estado, resumo seguro e referência para acesso autenticado.
 - Tempo real apenas distribui atualizações da sala e não substitui a notificação interna persistente.
 
@@ -363,9 +393,13 @@ SMS, push, integrações com chat corporativo e webhooks ficam fora do MVP, sem 
 | Avaliar regra | Estado da avaliação, ocorrência, evidências e acontecimento resultante |
 | Alterar incidente | Estado, versão, timeline, sequência da sala e obrigação de divulgação |
 | Enviar mensagem | Mensagem e sequência da sala |
+| Promover mensagem | Cópia na timeline e sequência da sala |
+| Ocultar conteúdo da sala | Moderação auditável e sequência da sala |
 | Publicar atualização | Estado público, atualização pública e obrigação de divulgação |
 
-Uma transação não atravessa áreas. Por exemplo, ao remover um membro, Organizações revoga o acesso e publica `MembroRemovido`; Resposta a Incidentes libera de forma idempotente os incidentes sob responsabilidade dessa pessoa e registra o fato. A revogação não espera essa limpeza para ser efetiva.
+Uma transação não atravessa áreas. Por exemplo, ao remover um membro, Organizações revoga o acesso e publica `MembroRemovido`; Resposta a Incidentes libera de forma idempotente os incidentes sob responsabilidade dessa pessoa, Comunicação cancela entregas externas pendentes e o tempo real encerra suas conexões. A revogação não espera essas reações para ser efetiva, e nenhuma delas apaga autoria ou histórico já confirmado.
+
+Invariantes que dependem de leitura entre áreas usam coordenação sem escrita conjunta. `AbrirIncidenteManual`, obrigações confirmadas de criação automática e `ArquivarServico` são ordenados pela identidade do serviço: cada comando consulta o estado oficial necessário antes de escrever somente em sua área proprietária. Uma ativação cuja criação de incidente ainda esteja pendente impede o arquivamento; se a consulta necessária estiver indisponível, nenhuma decisão é confirmada.
 
 ## Identidades e unicidades
 
@@ -473,7 +507,7 @@ O incidente permanece resolvido. O alerta continua ativo e ainda afeta o estado 
 
 ### Membro removido durante a resposta
 
-O acesso é revogado em Organizações. A reação durável em Resposta a Incidentes remove sua responsabilidade principal, preserva sua autoria anterior e informa a sala.
+O acesso é revogado em Organizações. O acontecimento não enumera incidentes, conexões ou entregas: Resposta a Incidentes libera suas responsabilidades, Comunicação cancela entregas externas pendentes e o tempo real encerra suas conexões. Cada reação é idempotente, enquanto autoria, notificações e entregas históricas permanecem preservadas.
 
 ## Estado da revisão
 

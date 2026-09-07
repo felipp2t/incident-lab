@@ -1,6 +1,6 @@
 # Casos de uso e critérios de aceite do MVP
 
-Status: proposta para revisão
+Status: aceito
 
 Este documento transforma o [system design](../architecture/system-design.md) e o [modelo conceitual](../architecture/domain-model.md) em comportamento verificável, sem escolher tecnologias. O [vocabulário do domínio](../../CONTEXT.md) é canônico; os [ADRs](../adr/README.md) explicam por que as decisões foram tomadas.
 
@@ -76,9 +76,12 @@ Critérios de aceite:
 - Dado um `visualizador`, quando tenta executar qualquer alteração, então a ação é recusada.
 - Dado o mesmo usuário com papéis diferentes em duas organizações, quando alterna entre elas, então recebe as permissões do vínculo atual.
 - Dado qualquer ator autenticado, quando tenta consultar ou relacionar dados de outra organização, então nenhuma informação é exposta e a operação é recusada.
-- Dado um membro conectado e responsável por um incidente, quando é removido, então seu acesso é revogado, sua conexão é encerrada, o incidente fica sem responsável e sua autoria passada permanece.
+- Dado um membro conectado, responsável por incidentes e com entregas externas pendentes, quando é removido, então seu acesso é revogado imediatamente e `MembroRemovido` permite que cada área encerre suas próprias pendências sem apagar autoria ou histórico.
+- Dado um `MembroRemovido` repetido, quando uma área já concluiu sua reação, então não repete seus efeitos.
+- Dado um responsável cujo papel muda para `visualizador`, quando `PapelDoMembroAlterado` é processado, então suas responsabilidades são liberadas, entregas externas incompatíveis são canceladas e sua conexão permanece disponível somente com as novas permissões.
+- Dado um `visualizador` promovido, quando o novo papel é confirmado, então ele pode receber ações e comunicações futuras sem ser incluído retroativamente nas anteriores.
 
-Referências: [ADR 0014](../adr/0014-usar-papeis-fixos-por-organizacao.md), [ADR 0035](../adr/0035-isolar-dados-por-organizacao.md), [ADR 0036](../adr/0036-revogar-acesso-sem-apagar-autoria.md).
+Referências: [ADR 0014](../adr/0014-usar-papeis-fixos-por-organizacao.md), [ADR 0035](../adr/0035-isolar-dados-por-organizacao.md), [ADR 0036](../adr/0036-revogar-acesso-sem-apagar-autoria.md), [ADR 0084](../adr/0084-propagar-alteracoes-de-papel-sem-remover-o-vinculo.md).
 
 ## UC-02 — Cadastrar e arquivar um serviço monitorado
 
@@ -91,9 +94,13 @@ Critérios de aceite:
 - Dado um serviço, quando um health check é configurado, então intervalo, limite de tempo e resultado esperado precisam ser válidos.
 - Dado um serviço com histórico e sem incidentes ativos, quando é arquivado, então coletas e avaliações param e o histórico permanece consultável.
 - Dado um serviço com incidente ativo, quando alguém tenta arquivá-lo, então a operação é recusada.
+- Dada uma ativação com criação automática de incidente ainda pendente, quando alguém tenta arquivar o serviço, então o arquivamento é recusado até que o incidente seja criado e resolvido.
+- Dado um sinal aceito ainda não avaliado, quando o serviço é arquivado, então seu processamento registra o corte administrativo sem iniciar avaliação ou alerta.
+- Dadas abertura manual e arquivamento concorrentes para o mesmo serviço, quando são decididos, então somente a primeira pode ser confirmada e a segunda observa seu resultado.
+- Dada a consulta aos incidentes indisponível, quando alguém tenta arquivar o serviço, então o arquivamento é recusado para nova tentativa.
 - Dado um serviço arquivado, quando é restaurado, então fontes e regras não retomam contagens antigas.
 
-Referências: [ADR 0029](../adr/0029-arquivar-servicos-com-historico.md), [ADR 0032](../adr/0032-impedir-execucoes-sobrepostas-de-health-checks.md).
+Referências: [ADR 0029](../adr/0029-arquivar-servicos-com-historico.md), [ADR 0032](../adr/0032-impedir-execucoes-sobrepostas-de-health-checks.md), [ADR 0085](../adr/0085-coordenar-abertura-manual-e-arquivamento-por-servico.md), [ADR 0086](../adr/0086-usar-arquivamento-como-corte-para-sinais-pendentes.md).
 
 ## UC-03 — Configurar uma regra de alerta
 
@@ -137,10 +144,11 @@ Critérios de aceite:
 - Dada uma fonte com frequência esperada, quando nenhuma validade específica é configurada, então seu frescor equivale a três vezes essa frequência.
 - Dado um sinal com instante observado até um minuto no futuro, quando é aceito, então o instante original é preservado e a avaliação não usa um instante posterior ao recebimento.
 - Dado um sinal com instante observado mais de um minuto no futuro, quando chega, então o sinal inteiro é rejeitado.
-- Dado um sinal que era fresco e elegível na aceitação, quando o processamento interno atrasa, então ele continua elegível e é processado na ordem durável.
+- Dado um sinal que era temporalmente válido na aceitação e cujo serviço permanece ativo, quando o processamento interno atrasa, então ele continua elegível e é processado na ordem durável.
+- Dado um sinal aceito antes do arquivamento mas ainda não avaliado no corte, quando seu processamento ocorre, então registra o motivo administrativo e não altera o estado atual.
 - Dada uma fonte sem frequência esperada, quando alguém configura uma regra baseada em silêncio ou duração, então a configuração é recusada até que o contrato temporal seja definido.
 
-Referências: [ADR 0008](../adr/0008-tornar-a-ingestao-de-sinais-idempotente.md), [ADR 0009](../adr/0009-nao-reavaliar-o-estado-com-sinais-atrasados.md), [ADR 0034](../adr/0034-confirmar-sinais-somente-apos-aceitacao-duravel.md), [ADR 0063](../adr/0063-aceitar-ou-rejeitar-o-sinal-inteiro.md), [ADR 0071](../adr/0071-definir-semantica-temporal-dos-sinais.md), [ADR 0077](../adr/0077-limitar-apenas-fluxos-operacionais-no-mvp.md).
+Referências: [ADR 0008](../adr/0008-tornar-a-ingestao-de-sinais-idempotente.md), [ADR 0009](../adr/0009-nao-reavaliar-o-estado-com-sinais-atrasados.md), [ADR 0034](../adr/0034-confirmar-sinais-somente-apos-aceitacao-duravel.md), [ADR 0063](../adr/0063-aceitar-ou-rejeitar-o-sinal-inteiro.md), [ADR 0071](../adr/0071-definir-semantica-temporal-dos-sinais.md), [ADR 0077](../adr/0077-limitar-apenas-fluxos-operacionais-no-mvp.md), [ADR 0086](../adr/0086-usar-arquivamento-como-corte-para-sinais-pendentes.md).
 
 ## UC-05 — Executar health checks
 
@@ -202,12 +210,15 @@ Como `respondente`, quero abrir um incidente quando percebo um problema que o mo
 Critérios de aceite:
 
 - Dado um `respondente` ou `admin`, quando abre um incidente manual, então seleciona exatamente um serviço, severidade e impacto operacional declarado.
+- Dado um serviço inexistente, de outra organização ou arquivado, quando a abertura é solicitada, então nenhum incidente é criado.
+- Dado que o cadastro oficial do serviço não pode ser consultado, quando a abertura é solicitada, então o comando é recusado para nova tentativa.
 - Dado um incidente manual, quando é criado, então começa `aberto`, privado e pode ficar sem responsável.
 - Dado seu impacto `degradado`, `indisponível` ou `desconhecido`, quando o incidente fica ativo, então contribui para o estado agregado do serviço.
-- Dado um impacto alterado, quando a mudança é confirmada, então o estado é recalculado e a timeline registra autoria e valores.
-- Dado o incidente resolvido, quando seu impacto deixa de valer, então o estado do serviço é recalculado.
+- Dado um impacto manual declarado ou alterado, quando a mudança é confirmada, então a timeline e o acontecimento específico são registrados juntos para Monitoramento recalcular o serviço.
+- Dado o incidente resolvido, quando seu impacto deixa de valer, então um acontecimento específico de encerramento é registrado para Monitoramento recalcular o serviço.
+- Dada uma repetição do mesmo acontecimento de impacto, quando Monitoramento o processa, então a contribuição é aplicada uma única vez.
 
-Referências: [ADR 0037](../adr/0037-limitar-cada-incidente-a-um-servico.md), [ADR 0064](../adr/0064-permitir-impacto-operacional-em-incidentes-manuais.md).
+Referências: [ADR 0037](../adr/0037-limitar-cada-incidente-a-um-servico.md), [ADR 0064](../adr/0064-permitir-impacto-operacional-em-incidentes-manuais.md), [ADR 0080](../adr/0080-integrar-impactos-manuais-por-acontecimentos-especificos.md), [ADR 0085](../adr/0085-coordenar-abertura-manual-e-arquivamento-por-servico.md).
 
 ## UC-09 — Coordenar e resolver um incidente
 
@@ -221,11 +232,13 @@ Critérios de aceite:
 - Dado um incidente atribuído, quando outro `respondente` tenta tomá-lo, então é recusado; o responsável atual pode transferi-lo e um `admin` pode substituí-lo ou removê-lo.
 - Dadas duas alterações baseadas na mesma versão, quando a primeira é confirmada, então a segunda recebe conflito e não sobrescreve o estado.
 - Dada uma mudança de severidade, quando é confirmada, então reincidências e edições da regra não a sobrescrevem.
+- Dada uma mudança de estado, severidade ou responsabilidade, quando é confirmada, então produz seu acontecimento específico e não um `IncidenteAlterado` genérico.
 - Dado um incidente não resolvido, quando é resolvido, então categoria e nota são obrigatórias e `resolvido` torna-se terminal.
+- Dado um incidente resolvido, quando `IncidenteResolvido` é publicado, então contém a categoria e os dados operacionais mínimos, mas não a nota interna de resolução.
 - Dado um alerta ainda ativo, quando o incidente é resolvido com confirmação explícita, então o alerta e o impacto do monitoramento continuam ativos e uma recuperação tardia entra na timeline sem reabrir o incidente.
 - Dados dois incidentes do mesmo problema, quando um é marcado como `duplicado`, então referencia o principal, é resolvido e nenhum histórico é mesclado.
 
-Referências: [ADR 0005](../adr/0005-tornar-a-resolucao-do-incidente-terminal.md), [ADR 0013](../adr/0013-atribuir-um-responsavel-principal-ao-incidente.md), [ADR 0015](../adr/0015-controlar-a-atribuicao-do-responsavel-principal.md), [ADR 0016](../adr/0016-rejeitar-alteracoes-baseadas-em-versoes-antigas.md), [ADR 0038](../adr/0038-confirmar-estado-timeline-e-divulgacao-juntos.md), [ADR 0043](../adr/0043-relacionar-incidentes-duplicados-sem-mescla.md), [ADR 0044](../adr/0044-classificar-a-resolucao-do-incidente.md), [ADR 0046](../adr/0046-permitir-resolver-com-alerta-ainda-ativo.md).
+Referências: [ADR 0005](../adr/0005-tornar-a-resolucao-do-incidente-terminal.md), [ADR 0013](../adr/0013-atribuir-um-responsavel-principal-ao-incidente.md), [ADR 0015](../adr/0015-controlar-a-atribuicao-do-responsavel-principal.md), [ADR 0016](../adr/0016-rejeitar-alteracoes-baseadas-em-versoes-antigas.md), [ADR 0038](../adr/0038-confirmar-estado-timeline-e-divulgacao-juntos.md), [ADR 0043](../adr/0043-relacionar-incidentes-duplicados-sem-mescla.md), [ADR 0044](../adr/0044-classificar-a-resolucao-do-incidente.md), [ADR 0046](../adr/0046-permitir-resolver-com-alerta-ainda-ativo.md), [ADR 0081](../adr/0081-publicar-mudancas-de-incidente-como-fatos-especificos.md), [ADR 0082](../adr/0082-nao-transportar-a-nota-interna-na-resolucao.md).
 
 ## UC-10 — Colaborar e recuperar uma sala
 
@@ -235,9 +248,26 @@ Critérios de aceite:
 
 - Dado um comando do cliente, quando a confirmação se perde e o mesmo identificador é reenviado, então o resultado original é devolvido sem repetir o efeito.
 - Dadas mensagens simultâneas, quando são confirmadas, então ambas permanecem e recebem posições distintas na sequência da sala.
+- Dada uma operação confirmada, quando sua atualização é produzida, então transporta apenas suas mudanças inseparáveis e a nova sequência, não o estado completo da sala.
 - Dada uma mensagem confirmada, quando o autor tenta editar ou apagar, então a operação é recusada; uma correção é enviada como nova mensagem.
 - Dada uma mensagem relevante, quando um respondente a promove, então uma cópia independente entra na timeline.
-- Dado conteúdo sensível, quando um `admin` o oculta, então o conteúdo deixa de ser exibido e a intervenção permanece auditável.
+- Dada uma promoção confirmada, quando a mensagem original é posteriormente ocultada ou expira pela retenção, então a cópia oficial permanece na timeline.
+- Dado o mesmo comando de envio ou promoção repetido, quando seu efeito já foi confirmado, então o resultado anterior é devolvido sem criar outra mensagem ou nota.
+- Dados comandos distintos ou concorrentes para promover a mesma mensagem, quando são processados, então somente uma entrada é criada e os demais recebem a promoção existente.
+- Dado conteúdo sensível em mensagem ou timeline, quando um `admin` solicita sua ocultação, então um motivo é obrigatório, o conteúdo deixa de ser exibido e autoria, instante e intervenção permanecem auditáveis.
+- Dada uma mensagem promovida, quando somente a mensagem ou somente sua nota é ocultada, então a outra cópia permanece inalterada.
+- Dado um conteúdo já ocultado, quando outro comando tenta ocultá-lo novamente, então recebe a moderação existente sem criar outra intervenção.
+- Dado um conteúdo ocultado cujo original continua disponível, quando um `admin` restaura sua exibição com motivo, então o conteúdo volta a ser apresentado e a ocultação e a restauração permanecem auditáveis.
+- Dada uma mensagem promovida, quando somente a mensagem ou somente sua nota é restaurada, então a outra cópia permanece inalterada.
+- Dado um conteúdo já visível, quando outro comando tenta restaurá-lo novamente, então recebe a restauração vigente sem criar outra intervenção.
+- Dado um conteúdo indisponível por retenção ou exclusão administrativa, quando sua restauração é solicitada, então a operação é recusada sem alteração parcial.
+- Dado um conteúdo restaurado e novamente ocultado, quando as intervenções são consultadas, então todo o ciclo permanece ordenado e auditável.
+- Dado um conteúdo ocultado, quando qualquer pessoa consulta normalmente a sala, busca, notificações, projeções públicas ou exportações operacionais, então recebe no máximo a indicação da ocultação, ainda que seja `admin`.
+- Dado um conteúdo ocultado ainda disponível, quando um `admin` com permissão vigente o consulta pela visão de moderação, então o acesso é registrado antes de o original ser revelado.
+- Dada uma nova consulta administrativa ao mesmo conteúdo ocultado, quando é confirmada, então produz outro registro de acesso; repetir a mesma solicitação não duplica o registro.
+- Dada uma falha ao confirmar o registro de acesso, quando a consulta administrativa é realizada, então o conteúdo não é revelado.
+- Dado o histórico completo de moderação, quando um `admin` com permissão vigente o consulta, então recebe em ordem as intervenções, motivos e acessos administrativos, sem receber o conteúdo original ocultado implicitamente.
+- Dado um `respondente` ou `visualizador`, quando consulta uma mensagem ou entrada moderada, então recebe somente seu estado atual de apresentação e não o motivo ou histórico de moderação.
 - Dado um usuário que apenas abre ou observa a sala, quando sai, então nenhum vínculo persistente de participação é criado.
 - Dado um usuário com a sala conectada, quando sua conexão termina, então sua presença desaparece após a tolerância do cenário sem entrada na timeline.
 - Dado um incidente resolvido há menos de sete dias, quando um `respondente` ou `admin` envia ou promove uma mensagem, então a operação é aceita sem alterar o estado terminal.
@@ -246,9 +276,11 @@ Critérios de aceite:
 - Dada a conversa encerrada, quando o postmortem é editado, então seu próprio ciclo continua sem reabrir a conversa ou o incidente.
 - Dado que o cliente recebeu até a sequência 40, quando reconecta e existem 41 a 45, então recebe o intervalo em ordem e ignora repetições.
 - Dado que o intervalo não pode ser recuperado, quando reconecta, então recebe o estado completo atual.
+- Dado um estado completo recebido após uma lacuna, quando o cliente o aplica, então substitui sua visão e continua a partir da sequência corrente informada.
+- Dado um membro sem vínculo ou permissão vigente, quando tenta conectar ou recuperar uma sala, então nenhum conteúdo protegido é entregue.
 - Dado que o canal em tempo real está indisponível, quando a equipe opera o incidente, então comandos persistidos continuam e a interface informa a degradação e permite atualização periódica.
 
-Referências: [ADR 0017](../adr/0017-manter-a-timeline-imutavel.md), [ADR 0018](../adr/0018-separar-conversa-e-timeline.md), [ADR 0019](../adr/0019-manter-mensagens-imutaveis.md), [ADR 0020](../adr/0020-tratar-presenca-como-informacao-efemera.md), [ADR 0021](../adr/0021-recuperar-atualizacoes-por-sequencia.md), [ADR 0022](../adr/0022-tornar-comandos-do-cliente-idempotentes.md), [ADR 0052](../adr/0052-permitir-operacao-sem-tempo-real.md), [ADR 0069](../adr/0069-nao-manter-lista-persistente-de-participantes-no-mvp.md), [ADR 0075](../adr/0075-permitir-conversa-por-sete-dias-apos-a-resolucao.md).
+Referências: [ADR 0017](../adr/0017-manter-a-timeline-imutavel.md), [ADR 0018](../adr/0018-separar-conversa-e-timeline.md), [ADR 0019](../adr/0019-manter-mensagens-imutaveis.md), [ADR 0020](../adr/0020-tratar-presenca-como-informacao-efemera.md), [ADR 0021](../adr/0021-recuperar-atualizacoes-por-sequencia.md), [ADR 0022](../adr/0022-tornar-comandos-do-cliente-idempotentes.md), [ADR 0052](../adr/0052-permitir-operacao-sem-tempo-real.md), [ADR 0069](../adr/0069-nao-manter-lista-persistente-de-participantes-no-mvp.md), [ADR 0075](../adr/0075-permitir-conversa-por-sete-dias-apos-a-resolucao.md), [ADR 0087](../adr/0087-restringir-o-acesso-a-conteudo-ocultado.md).
 
 ## UC-11 — Notificar a equipe
 
@@ -258,6 +290,11 @@ Critérios de aceite:
 
 - Dado um incidente `low` ou `medium`, quando abre, então `respondentes` e `admins` recebem notificação interna.
 - Dado um incidente `high` ou `critical`, quando abre, então também são criadas entregas de e-mail para os membros elegíveis.
+- Dado um acontecimento de incidente sem destinatários embutidos, quando Comunicação cria notificações, então consulta Organizações e aplica sua política aos vínculos ativos naquele momento.
+- Dada uma falha ao consultar Organizações, quando a audiência não pode ser determinada, então a solicitação permanece pendente para repetição e o incidente continua confirmado.
+- Dado o mesmo acontecimento processado novamente, quando a solicitação já existe, então não cria outra solicitação, notificação interna ou entrega.
+- Dado um acontecimento e um destinatário elegível, quando a audiência é materializada, então existe no máximo uma notificação interna para essa combinação.
+- Dada uma notificação com mais de um canal aplicável, quando as entregas são criadas, então cada canal possui identidade e resultado independentes.
 - Dado um incidente cuja severidade é elevada para uma faixa que amplia a audiência ou alcança `critical`, quando a mudança é confirmada, então somente as novas entregas necessárias são criadas.
 - Dada uma atribuição ou transferência de responsabilidade, quando é confirmada, então somente a pessoa diretamente envolvida recebe a notificação correspondente.
 - Dado um incidente resolvido, quando o encerramento é confirmado, então os destinatários das comunicações anteriores de abertura ou escalada recebem o encerramento pelo canal aplicável.
@@ -274,7 +311,7 @@ Critérios de aceite:
 - Dado um e-mail de incidente, quando é produzido, então contém apenas serviço, severidade, estado, resumo seguro e referência para acesso autenticado.
 - Dada uma notificação entregue, quando o membro a recebe ou abre, então não se torna responsável automaticamente.
 
-Referências: [ADR 0023](../adr/0023-desacoplar-notificacoes-do-incidente.md), [ADR 0047](../adr/0047-notificar-membros-conforme-a-severidade.md), [ADR 0072](../adr/0072-usar-notificacoes-internas-e-email-no-mvp.md), [ADR 0078](../adr/0078-padronizar-repeticoes-assincronas-no-mvp.md).
+Referências: [ADR 0023](../adr/0023-desacoplar-notificacoes-do-incidente.md), [ADR 0047](../adr/0047-notificar-membros-conforme-a-severidade.md), [ADR 0072](../adr/0072-usar-notificacoes-internas-e-email-no-mvp.md), [ADR 0078](../adr/0078-padronizar-repeticoes-assincronas-no-mvp.md), [ADR 0079](../adr/0079-consultar-organizacoes-para-resolver-audiencia.md).
 
 ## UC-12 — Publicar status seguro
 
@@ -288,9 +325,13 @@ Critérios de aceite:
 - Dado um incidente manual, quando abre, então permanece privado até uma publicação explícita.
 - Dado um incidente resolvido enquanto o alerta permanece ativo, quando a comunicação é atualizada, então nenhuma recuperação é afirmada automaticamente e um respondente escolhe manter ou encerrar a publicação.
 - Dada uma regra interna não publicável, quando afeta o estado interno, então não altera o estado público.
+- Dado `EstadoOperacionalAlterado`, quando o estado público é calculado, então esse acontecimento interno não participa do cálculo.
+- Dada uma publicação criada ou atualizada, quando `PublicacaoAlterada` é produzido, então contém a representação pública completa e sanitizada do incidente afetado.
+- Dado um `PublicacaoAlterada` mais recente, quando a página o processa, então substitui sua cópia sem consultar qualquer fonte interna.
+- Dado um acontecimento repetido ou mais antigo, quando a página o processa, então não duplica atualizações nem regride a versão publicada.
 - Dada a fonte principal indisponível, quando a página continua acessível com dados anteriores, então mostra o instante da última atualização.
 
-Referências: [ADR 0024](../adr/0024-publicar-incidentes-automaticamente-com-conteudo-seguro.md), [ADR 0065](../adr/0065-separar-estado-interno-e-estado-publico.md), [ADR 0066](../adr/0066-separar-historicos-interno-e-publico.md).
+Referências: [ADR 0024](../adr/0024-publicar-incidentes-automaticamente-com-conteudo-seguro.md), [ADR 0065](../adr/0065-separar-estado-interno-e-estado-publico.md), [ADR 0066](../adr/0066-separar-historicos-interno-e-publico.md), [ADR 0083](../adr/0083-publicar-projecao-publica-completa-e-sanitizada.md).
 
 ## UC-13 — Produzir postmortem
 
@@ -319,6 +360,8 @@ Como `respondente`, quero distinguir saúde, cobertura e desempenho da resposta.
 Critérios de aceite:
 
 - Dados vários impactos ativos, quando o estado do serviço é calculado, então aplica a precedência `indisponível > degradado > desconhecido > operacional`.
+- Dada uma mudança de contribuição que não altera o resultado agregado, quando o serviço é recalculado, então não produz `EstadoOperacionalAlterado`.
+- Dada uma mudança que altera o resultado agregado, quando o serviço é recalculado, então estado, histórico e obrigação de publicar `EstadoOperacionalAlterado` são confirmados juntos.
 - Dado um alerta apenas pendente, quando o estado é calculado, então ele não altera o resultado.
 - Dada uma dependência relacionada que fica indisponível, quando o estado do serviço dependente é calculado, então ele não muda sem evidência própria.
 - Dado um período desconhecido, quando a disponibilidade é calculada, então esse período não é classificado como disponível nem indisponível.
@@ -326,7 +369,7 @@ Critérios de aceite:
 - Dado um incidente automático, quando suas durações são calculadas, então detecção, recuperação técnica e resolução operacional usam os marcos definidos no system design.
 - Dados estados interno e público divergentes, quando os históricos são calculados, então cada um usa somente sua própria fonte.
 
-Referências: [ADR 0026](../adr/0026-separar-tempos-de-deteccao-recuperacao-e-resolucao.md), [ADR 0027](../adr/0027-derivar-o-estado-do-servico-dos-alertas.md), [ADR 0028](../adr/0028-nao-propagar-falhas-entre-dependencias.md), [ADR 0065](../adr/0065-separar-estado-interno-e-estado-publico.md), [ADR 0066](../adr/0066-separar-historicos-interno-e-publico.md), [ADR 0067](../adr/0067-separar-disponibilidade-e-cobertura.md).
+Referências: [ADR 0026](../adr/0026-separar-tempos-de-deteccao-recuperacao-e-resolucao.md), [ADR 0027](../adr/0027-derivar-o-estado-do-servico-dos-alertas.md), [ADR 0028](../adr/0028-nao-propagar-falhas-entre-dependencias.md), [ADR 0065](../adr/0065-separar-estado-interno-e-estado-publico.md), [ADR 0066](../adr/0066-separar-historicos-interno-e-publico.md), [ADR 0067](../adr/0067-separar-disponibilidade-e-cobertura.md), [ADR 0080](../adr/0080-integrar-impactos-manuais-por-acontecimentos-especificos.md).
 
 ## UC-15 — Reter histórico e evidências
 

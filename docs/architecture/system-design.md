@@ -1,6 +1,6 @@
 # System design do IncidentLab
 
-Este documento consolida a arquitetura conceitual do IncidentLab sem escolher tecnologias. O [modelo conceitual](./domain-model.md) detalha entidades e fronteiras de consistência, o [vocabulário do domínio](../../CONTEXT.md) define os termos canônicos, o [MVP](../requirements/mvp.md) transforma o desenho em casos verificáveis e o [índice de ADRs](../adr/README.md) preserva as decisões e suas justificativas.
+Este documento consolida a arquitetura conceitual do IncidentLab sem escolher tecnologias. O [modelo conceitual](./domain-model.md) detalha entidades e fronteiras de consistência, os [contratos de aplicação](./application-contracts.md) descrevem intenções e fatos entre as áreas, o [vocabulário do domínio](../../CONTEXT.md) define os termos canônicos, o [MVP](../requirements/mvp.md) transforma o desenho em casos verificáveis e o [índice de ADRs](../adr/README.md) preserva as decisões e suas justificativas.
 
 ## Objetivo e recorte
 
@@ -64,8 +64,8 @@ flowchart LR
     Org -->|autoriza ações| Monitoring
     Org -->|autoriza ações| Response
     Monitoring -->|alerta ativado, recuperado ou interrompido| Response
-    Response -->|incidente aberto, alterado ou resolvido| Communication
-    Monitoring -->|estado operacional alterado| Communication
+    Response -->|impacto manual declarado, alterado ou encerrado| Monitoring
+    Response -->|incidente aberto; estado, severidade, responsabilidade ou resolução| Communication
 ```
 
 ## Modelo conceitual
@@ -167,7 +167,7 @@ sequenceDiagram
     I->>C: IncidenteAberto
     C-->>U: notifica conforme severidade
     U->>I: assume e investiga
-    I->>C: IncidenteAlterado
+    I->>C: fatos específicos das mudanças
     M->>I: AlertaRecuperado
     U->>I: resolve com categoria e nota
     I->>C: IncidenteResolvido
@@ -181,10 +181,13 @@ Garantias do fluxo:
 - Reativações antes da resolução entram no incidente existente.
 - Um incidente manual nunca é reutilizado automaticamente.
 - Depois de uma ativação elegível, criar o incidente é uma obrigação durável, mesmo que o alerta se recupere durante um atraso interno.
+- Arquivar um serviço encerra sem avaliação os sinais aceitos que ainda não produziram transição; fatos e obrigações já confirmados permanecem válidos.
 
 ## Fluxo manual
 
 Ao abrir um incidente manual, um `respondente` ou `admin` escolhe serviço, severidade e impacto operacional declarado. O incidente começa privado, sem responsável obrigatório, e pode ser publicado explicitamente. Seu impacto deixa de contribuir para o estado do serviço quando o incidente é resolvido.
+
+A abertura consulta o cadastro oficial do serviço em Monitoramento e não usa uma cópia local. Abertura manual e arquivamento entram na mesma ordem de decisão por serviço: se a abertura vencer, o arquivamento encontra um incidente ativo e é recusado; se o arquivamento vencer, a abertura encontra o serviço arquivado e é recusada. Uma obrigação automática já confirmada também impede o arquivamento até que seu incidente seja criado e resolvido.
 
 Um incidente manual e um automático do mesmo serviço permanecem independentes. Se dois incidentes representarem o mesmo problema, um pode ser resolvido como duplicado e referenciar o principal; timelines e conversas nunca são mescladas.
 
@@ -198,6 +201,7 @@ Um incidente manual e um automático do mesmo serviço permanecem independentes.
 - A avaliação é sequencial por `serviço + regra` e paralela entre combinações independentes.
 - Acontecimentos entre áreas têm entrega pelo menos uma vez e consumidores idempotentes.
 - A ordem é preservada por entidade. Uma falha isolada pausa apenas a entidade afetada até intervenção.
+- Abertura manual, obrigações confirmadas de criação automática e arquivamento são coordenados pela identidade do serviço, sem uma transação escrever nas duas áreas.
 
 ## Comandos principais
 
@@ -224,13 +228,19 @@ Acontecimentos expressam fatos passados e não podem ser recusados pelo produtor
 
 | Produtor | Acontecimento | Consumidor principal |
 | --- | --- | --- |
-| Organizações | MembroRemovido | Resposta a Incidentes, tempo real |
+| Organizações | MembroRemovido | Resposta a Incidentes, Comunicação, tempo real |
+| Organizações | PapelDoMembroAlterado | Resposta a Incidentes, Comunicação, tempo real |
 | Monitoramento | AlertaAtivado | Resposta a Incidentes |
 | Monitoramento | AlertaRecuperado | Resposta a Incidentes |
 | Monitoramento | AlertaInterrompido | Resposta a Incidentes |
-| Monitoramento | EstadoOperacionalAlterado | Visões de leitura, Comunicação |
+| Monitoramento | EstadoOperacionalAlterado | Visões de leitura internas |
+| Resposta a Incidentes | ImpactoOperacionalDeclarado | Monitoramento |
+| Resposta a Incidentes | ImpactoOperacionalAlterado | Monitoramento |
+| Resposta a Incidentes | ImpactoOperacionalEncerrado | Monitoramento |
 | Resposta a Incidentes | IncidenteAberto | Comunicação, tempo real |
-| Resposta a Incidentes | IncidenteAlterado | Comunicação, tempo real |
+| Resposta a Incidentes | EstadoDoIncidenteAlterado | Comunicação, tempo real |
+| Resposta a Incidentes | SeveridadeDoIncidenteAlterada | Comunicação, tempo real |
+| Resposta a Incidentes | ResponsavelPrincipalAlterado | Comunicação, tempo real |
 | Resposta a Incidentes | IncidenteResolvido | Comunicação, tempo real |
 | Comunicação | PublicaçãoAlterada | Página pública |
 
@@ -239,15 +249,20 @@ Todo comando e acontecimento possui identidade; fluxos propagam causa imediata e
 ## Colaboração e retomada
 
 - Conversa é livre; timeline contém fatos operacionais e notas promovidas.
-- Mensagens e timeline são imutáveis; correções e moderações geram novos registros auditáveis.
-- Promover uma mensagem copia seu conteúdo para uma nota independente na timeline.
+- Mensagens e timeline são imutáveis; correções e moderações geram novos registros auditáveis, e toda ocultação ou restauração exige motivo.
+- Mensagem e nota promovida são moderadas separadamente; ocultar ou restaurar uma não altera a outra.
+- Restaurar a exibição não apaga a ocultação anterior; cada mudança permanece na auditoria e não altera fatos operacionais do incidente.
+- Conteúdo ocultado não trafega nas consultas normais, nem mesmo para `admins`; uma visão administrativa explícita registra o acesso antes de revelá-lo.
+- Somente `admins` consultam motivos, intervenções e acessos do histórico de moderação; os demais papéis veem apenas o estado atual de apresentação.
+- Promover uma mensagem copia seu conteúdo para no máximo uma nota independente na timeline; correções usam uma nova mensagem.
 - O MVP não mantém uma lista persistente de participantes; coordenação, autoria e presença permanecem conceitos distintos.
 - Resolver o incidente mantém mensagens e promoções abertas por sete dias; depois disso, a conversa fica somente para leitura.
 - A janela posterior não reabre o incidente, e não existe reabertura da conversa no MVP.
 - Postmortem e entradas automáticas tardias da timeline continuam independentes do encerramento da conversa.
 - Presença é efêmera e não participa da sequência nem da auditoria.
 - Ao reconectar, o cliente informa a última sequência recebida e recupera as posteriores.
-- Se o intervalo não estiver disponível, o cliente recarrega o estado oficial completo.
+- Cada atualização transporta apenas a mudança confirmada, não uma cópia completa da sala.
+- Se o intervalo não estiver disponível ou a posição for incompatível, o cliente recarrega o estado oficial completo e continua da sequência corrente.
 - Sem canal em tempo real, comandos persistidos continuam e a interface usa atualização manual ou periódica.
 
 ## Comunicação externa
@@ -258,11 +273,15 @@ Todo comando e acontecimento possui identidade; fluxos propagam causa imediata e
 - `low` e `medium` notificam internamente `respondentes` e `admins`; `high` e `critical` também usam e-mail.
 - Abertura, escalada relevante e resolução notificam a audiência aplicável; atribuição notifica somente a pessoa envolvida.
 - Mensagens e transições rotineiras não geram avisos gerais.
+- `IncidenteResolvido` não transporta a nota interna; notificações e publicações produzem conteúdo seguro próprio.
+- Comunicação consulta Organizações para descobrir membros ativos elegíveis e não mantém uma cópia própria de papéis no MVP.
+- A lista de destinatários não é transportada pelos acontecimentos do incidente.
 - A caixa interna é persistente; tempo real apenas antecipa sua apresentação.
 - E-mails não críticos respeitam a preferência pessoal, enquanto a organização pode tornar os críticos obrigatórios.
 - Entrega não atribui responsabilidade.
 - Entregas são independentes por destinatário e canal; falhas temporárias são repetidas com a mesma identidade e falhas permanentes ficam visíveis.
 - A perda de elegibilidade do destinatário antes do e-mail cancela a entrega.
+- Falha ao consultar a audiência mantém a solicitação pendente para repetição sem afetar o incidente.
 - SMS, push, chat corporativo e webhooks ficam fora do MVP.
 
 ### Página de status
@@ -273,6 +292,8 @@ Todo comando e acontecimento possui identidade; fluxos propagam causa imediata e
 - Incidente manual começa privado.
 - Se o incidente for resolvido com alerta ainda ativo, a publicação exige uma escolha humana e nunca afirma recuperação automaticamente.
 - Estado e histórico públicos consideram apenas impactos publicados; podem divergir intencionalmente da visão interna.
+- `PublicacaoAlterada` carrega a representação pública completa e sanitizada do incidente afetado.
+- A página pública mantém sua própria cópia de leitura e nunca consulta incidentes, timelines ou notas internas.
 
 ### Postmortem e resumo público
 

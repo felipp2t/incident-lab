@@ -4,7 +4,7 @@ Este índice agrupa as decisões do IncidentLab por assunto. A numeração prese
 
 ## Como ler
 
-O [system design consolidado](../architecture/system-design.md) é a entrada principal, o [modelo conceitual](../architecture/domain-model.md) detalha entidades e consistência e o [vocabulário](../../CONTEXT.md) define os termos canônicos. Estes ADRs preservam o histórico e a justificativa das escolhas.
+O [system design consolidado](../architecture/system-design.md) é a entrada principal, o [modelo conceitual](../architecture/domain-model.md) detalha entidades e consistência, os [contratos de aplicação](../architecture/application-contracts.md) descrevem intenções e fatos e o [vocabulário](../../CONTEXT.md) define os termos canônicos. Estes ADRs preservam o histórico e a justificativa das escolhas.
 
 Nem todos os registros abaixo seriam ADRs clássicos em um projeto maduro: limites entre áreas, consistência, integração e tolerância a falhas são decisões arquiteturais; estados, permissões, retenção e regras de alerta são principalmente políticas de domínio ou produto. Eles foram mantidos aqui para preservar a forma de documentação escolhida nesta primeira rodada, enquanto a visão consolidada evita que a implementação dependa de ler dezenas de arquivos em sequência.
 
@@ -23,6 +23,7 @@ Nem todos os registros abaixo seriam ADRs clássicos em um projeto maduro: limit
 - [0014 — Usar papéis fixos por organização](./0014-usar-papeis-fixos-por-organizacao.md)
 - [0035 — Isolar dados por organização](./0035-isolar-dados-por-organizacao.md)
 - [0036 — Revogar acesso sem apagar autoria](./0036-revogar-acesso-sem-apagar-autoria.md)
+- [0084 — Propagar alterações de papel sem remover o vínculo](./0084-propagar-alteracoes-de-papel-sem-remover-o-vinculo.md)
 
 ## Sinais, fontes e regras
 
@@ -44,6 +45,7 @@ Nem todos os registros abaixo seriam ADRs clássicos em um projeto maduro: limit
 - [0063 — Aceitar ou rejeitar o sinal inteiro](./0063-aceitar-ou-rejeitar-o-sinal-inteiro.md)
 - [0070 — Limitar condições de regra por métrica no MVP](./0070-limitar-condicoes-de-regra-por-metrica-no-mvp.md)
 - [0071 — Definir semântica temporal dos sinais](./0071-definir-semantica-temporal-dos-sinais.md)
+- [0086 — Usar arquivamento como corte para sinais pendentes](./0086-usar-arquivamento-como-corte-para-sinais-pendentes.md)
 
 ## Serviços e health checks
 
@@ -56,6 +58,8 @@ Nem todos os registros abaixo seriam ADRs clássicos em um projeto maduro: limit
 - [0037 — Limitar cada incidente a um serviço](./0037-limitar-cada-incidente-a-um-servico.md)
 - [0064 — Permitir impacto operacional em incidentes manuais](./0064-permitir-impacto-operacional-em-incidentes-manuais.md)
 - [0076 — Classificar resultados de health check](./0076-classificar-resultados-de-health-check.md)
+- [0080 — Integrar impactos manuais por acontecimentos específicos](./0080-integrar-impactos-manuais-por-acontecimentos-especificos.md)
+- [0085 — Coordenar abertura manual e arquivamento por serviço](./0085-coordenar-abertura-manual-e-arquivamento-por-servico.md)
 
 ## Ciclo de vida dos incidentes
 
@@ -73,6 +77,8 @@ Nem todos os registros abaixo seriam ADRs clássicos em um projeto maduro: limit
 - [0043 — Relacionar incidentes duplicados sem mescla](./0043-relacionar-incidentes-duplicados-sem-mescla.md)
 - [0044 — Classificar a resolução do incidente](./0044-classificar-a-resolucao-do-incidente.md)
 - [0046 — Permitir resolver com alerta ainda ativo](./0046-permitir-resolver-com-alerta-ainda-ativo.md)
+- [0081 — Publicar mudanças de incidente como fatos específicos](./0081-publicar-mudancas-de-incidente-como-fatos-especificos.md)
+- [0082 — Não transportar a nota interna na resolução](./0082-nao-transportar-a-nota-interna-na-resolucao.md)
 - [0073 — Separar postmortem interno e resumo público](./0073-separar-postmortem-interno-e-resumo-publico.md)
 
 ## Colaboração e tempo real
@@ -85,6 +91,7 @@ Nem todos os registros abaixo seriam ADRs clássicos em um projeto maduro: limit
 - [0052 — Permitir operação sem tempo real](./0052-permitir-operacao-sem-tempo-real.md)
 - [0069 — Não manter lista persistente de participantes no MVP](./0069-nao-manter-lista-persistente-de-participantes-no-mvp.md)
 - [0075 — Permitir conversa por sete dias após a resolução](./0075-permitir-conversa-por-sete-dias-apos-a-resolucao.md)
+- [0087 — Restringir o acesso a conteúdo ocultado](./0087-restringir-o-acesso-a-conteudo-ocultado.md)
 
 ## Comunicação e status público
 
@@ -95,6 +102,8 @@ Nem todos os registros abaixo seriam ADRs clássicos em um projeto maduro: limit
 - [0066 — Separar históricos interno e público](./0066-separar-historicos-interno-e-publico.md)
 - [0067 — Separar disponibilidade e cobertura](./0067-separar-disponibilidade-e-cobertura.md)
 - [0072 — Usar notificações internas e e-mail no MVP](./0072-usar-notificacoes-internas-e-email-no-mvp.md)
+- [0079 — Consultar Organizações para resolver a audiência](./0079-consultar-organizacoes-para-resolver-audiencia.md)
+- [0083 — Publicar projeção pública completa e sanitizada](./0083-publicar-projecao-publica-completa-e-sanitizada.md)
 
 ## Confiabilidade e observabilidade
 
