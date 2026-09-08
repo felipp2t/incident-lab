@@ -1,0 +1,28 @@
+{
+  "name": "@incident-lab/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "dev": "pnpm build && node --env-file=../../.env dist/server.js",
+    "start": "node --env-file=../../.env dist/server.js",
+    "test": "pnpm build && node --test --test-isolation=none dist/domain/organization/application/use-cases/create-organization.test.js dist/domain/organization/enterprise/entities/organization.test.js",
+    "test:e2e": "pnpm build && node --env-file=../../.env --test --test-isolation=none dist/infra/http/controllers/create-organization.controller.e2e.test.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --env-file=../../.env dist/infra/db/drizzle/scripts/migrate.js",
+    "user:provision": "node --env-file=../../.env dist/infra/db/drizzle/scripts/provision-user.js"
+  },
+  "dependencies": {
+    "@fastify/cookie": "11.1.2",
+    "drizzle-orm": "0.45.2",
+    "fastify": "5.12.3",
+    "pg": "8.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.10",
+    "typescript": "~6.0.0"
+  }
+}
