@@ -18,6 +18,14 @@ Nem todos os registros abaixo seriam ADRs clássicos em um projeto maduro: limit
 - [0068 — Não adotar event sourcing](./0068-nao-adotar-event-sourcing.md)
 - [0077 — Limitar apenas fluxos operacionais no MVP](./0077-limitar-apenas-fluxos-operacionais-no-mvp.md)
 
+## Base técnica
+
+- [0088 — Adotar TypeScript, Fastify e Svelte](./0088-adotar-typescript-fastify-e-svelte.md)
+- [0089 — Usar PostgreSQL com Drizzle](./0089-usar-postgresql-com-drizzle.md)
+- [0090 — Usar sessões persistidas no PostgreSQL](./0090-usar-sessoes-persistidas-no-postgresql.md)
+- [0091 — Persistir outbox sem broker inicial](./0091-persistir-outbox-sem-broker-inicial.md)
+- [0092 — Organizar a API por domínio e infraestrutura](./0092-organizar-api-por-dominio-e-infraestrutura.md)
+
 ## Organizações e acesso
 
 - [0014 — Usar papéis fixos por organização](./0014-usar-papeis-fixos-por-organizacao.md)

@@ -1,6 +1,6 @@
 # System design do IncidentLab
 
-Este documento consolida a arquitetura conceitual do IncidentLab sem escolher tecnologias. O [modelo conceitual](./domain-model.md) detalha entidades e fronteiras de consistência, os [contratos de aplicação](./application-contracts.md) descrevem intenções e fatos entre as áreas, o [vocabulário do domínio](../../CONTEXT.md) define os termos canônicos, o [MVP](../requirements/mvp.md) transforma o desenho em casos verificáveis e o [índice de ADRs](../adr/README.md) preserva as decisões e suas justificativas.
+Este documento consolida a arquitetura conceitual do IncidentLab sem escolher tecnologias. O [modelo conceitual](./domain-model.md) detalha entidades e fronteiras de consistência, os [contratos de aplicação](./application-contracts.md) descrevem intenções e fatos entre as áreas, o [vocabulário do domínio](../../CONTEXT.md) define os termos canônicos, o [MVP](../requirements/mvp.md) transforma o desenho em casos verificáveis, a [base técnica](./technical-baseline.md) orienta a primeira implementação e o [índice de ADRs](../adr/README.md) preserva as decisões e suas justificativas.
 
 ## Objetivo e recorte
 
