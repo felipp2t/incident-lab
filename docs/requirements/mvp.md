@@ -25,6 +25,8 @@ configurar → simular → detectar → alertar → responder → recuperar → 
 
 ## Fatias de entrega
 
+O detalhamento da ordem e das dependências está no [roteiro de implementação por fatias verticais](../implementation/roadmap.md).
+
 ### Fatia 1 — Caminho vertical demonstrável
 
 Obrigatória para a primeira demonstração funcional:

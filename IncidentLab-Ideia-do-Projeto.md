@@ -3,9 +3,12 @@
 ## Documentação de arquitetura
 
 - [System design consolidado](./docs/architecture/system-design.md)
+- [Base técnica da Fatia 1](./docs/architecture/technical-baseline.md)
 - [Modelo conceitual do domínio](./docs/architecture/domain-model.md)
 - [Contratos de aplicação](./docs/architecture/application-contracts.md)
 - [Casos de uso e critérios de aceite do MVP](./docs/requirements/mvp.md)
+- [Roteiro de implementação por fatias verticais](./docs/implementation/roadmap.md)
+- [Backlog da Fatia 1 — incidente manual](./docs/implementation/slice-01-backlog.md)
 - [Vocabulário do domínio](./CONTEXT.md)
 - [Decisões arquiteturais](./docs/adr/README.md)
 
@@ -282,6 +285,8 @@ As regras devem aceitar uma duração ou quantidade mínima de ocorrências. Iss
 Cada requisição e tarefa assíncrona deve carregar um `correlationId`. Com isso, é possível relacionar logs e traces produzidos por diferentes partes do sistema.
 
 ## Roadmap
+
+O roteiro vigente, organizado por entregas verticais e sem decisões tecnológicas, está em [Roteiro de implementação](./docs/implementation/roadmap.md). As fases abaixo são o rascunho técnico original da ideia e não definem mais a ordem de execução.
 
 ### Fase 1 — Fundação
 
