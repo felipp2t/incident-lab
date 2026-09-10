@@ -7,8 +7,8 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "dev": "pnpm build && node --env-file=../../.env dist/server.js",
     "start": "node --env-file=../../.env dist/server.js",
-    "test": "pnpm build && node --test --test-isolation=none dist/domain/organization/application/use-cases/create-organization.test.js dist/domain/organization/enterprise/entities/organization.test.js",
-    "test:e2e": "pnpm build && node --env-file=../../.env --test --test-isolation=none dist/infra/http/controllers/create-organization.controller.e2e.test.js",
+    "test": "pnpm build && node --test --test-isolation=none dist/domain/organization/application/use-cases/associate-organization-member.test.js dist/domain/organization/application/use-cases/create-organization.test.js dist/domain/organization/enterprise/entities/organization.test.js",
+    "test:e2e": "pnpm build && node --env-file=../../.env --test --test-isolation=none dist/infra/http/controllers/associate-organization-member.controller.e2e.test.js dist/infra/http/controllers/create-organization.controller.e2e.test.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file=../../.env dist/infra/db/drizzle/scripts/migrate.js",
     "user:provision": "node --env-file=../../.env dist/infra/db/drizzle/scripts/provision-user.js"
