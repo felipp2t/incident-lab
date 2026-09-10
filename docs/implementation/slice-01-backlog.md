@@ -25,7 +25,7 @@ Todo comando mutável deve seguir as convenções de identidade, organização, 
 
 ## Ordem do backlog
 
-- [ ] S1-01 — Criar uma organização
+- [x] S1-01 — Criar uma organização
 - [ ] S1-02 — Associar membros e aplicar papéis
 - [ ] S1-03 — Cadastrar um serviço monitorado
 - [ ] S1-04 — Abrir um incidente manual
