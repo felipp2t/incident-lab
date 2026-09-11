@@ -8,6 +8,13 @@
       "when": 1788824553974,
       "tag": "0000_warm_starbolt",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789084842069,
+      "tag": "0001_jittery_joshua_kane",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   jsonb,
   pgEnum,
@@ -11,6 +12,12 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const membershipRole = pgEnum("membership_role", ["admin", "respondente", "visualizador"]);
+export const monitoredServiceOperationalState = pgEnum("monitored_service_operational_state", [
+  "unknown",
+  "operational",
+  "degraded",
+  "unavailable"
+]);
 
 export const users = pgTable(
   "users",
@@ -46,6 +53,21 @@ export const organizationMemberships = pgTable(
     primaryKey({ columns: [table.organizationId, table.userId] }),
     index("organization_memberships_user_idx").on(table.userId)
   ]
+);
+
+export const monitoredServices = pgTable(
+  "monitored_services",
+  {
+    id: uuid("id").primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    name: text("name").notNull(),
+    active: boolean("active").notNull().default(true),
+    operationalState: monitoredServiceOperationalState("operational_state").notNull().default("unknown"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("monitored_services_organization_idx").on(table.organizationId)]
 );
 
 export const sessions = pgTable(
